@@ -1,0 +1,6 @@
+name = B64 conversion
+description = convert b64 images in files and replaces the url of the image. Sponsored by Vox Teneo
+package = Vox Teneo
+core = 7.x
+version=7.x-1.0
+configure = admin/config/content/b64-conversion/manage

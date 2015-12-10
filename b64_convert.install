@@ -1,0 +1,15 @@
+<?php
+
+/**
+ * Implements hook_install().
+ */
+function b64_convert_install() {
+  variable_set('b64_convert_directory', 'public');
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function b64_convert_uninstall() {
+  variable_del('b64_convert_directory');
+}

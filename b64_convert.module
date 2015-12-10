@@ -1,0 +1,129 @@
+<?php
+
+/**
+ * @file
+ * b64 conversion module
+ */
+
+/**
+ * Implements hook_node_presave().
+ */
+function b64_convert_node_presave($node) {
+
+  $file_path = variable_get('b64_convert_directory');
+  b64_convert_module_check_node_content($node);
+
+}
+
+/**
+ * Impplements hook menu().
+ */
+function b64_convert_menu() {
+  $items = array();
+
+  $items['admin/config/content/b64-conversion'] = array(
+    'title' => 'base64 conversion',
+    'description' => 'Convert base 64 images into files in nodes.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('b64_convert_nodes_form', 1),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/config/content/b64-conversion/manage'] = array(
+    'title' => 'b64 conversion settings',
+    'description' => 'Configure file system and batch proccess of past nodes.',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+  return $items;
+}
+
+function b64_convert_nodes_form($form, &$form_state) {
+  $c_types = node_type_get_types();
+  $options = array();
+  $form_name = __FUNCTION__;
+  foreach ($c_types as $key => $value) {
+    $options[$value->type] = $value->name;
+  }
+  $form[$form_name]['directory'] = array(
+    '#description' => t('Enter directory for the images to be stored into (public or private)'),
+    '#title' => t('Directory'),
+    '#type' => 'textfield',
+    '#default_value' => variable_get('b64_convert_directory', 'public'),
+  );
+  $form[$form_name]['types'] = array(
+    '#description' => t('Select the content types for batch conversion'),
+    '#title' => t('Content types'),
+    '#type' => 'checkboxes',
+    '#options' => $options,
+  );
+
+  $form[$form_name]['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+  );
+
+  return $form;
+}
+
+function b64_convert_nodes_form_submit($form, &$form_state) {
+  if (isset($form_state['values']['directory']) && ($form_state['values']['directory'] == 'private' || $form_state['values']['directory'] == 'public')) {
+    variable_set('b64_convert_directory', $form_state['values']['directory']);
+  }
+
+  $file_path = variable_get('b64_convert_directory');
+
+  foreach ($form_state['values']['types'] as $type) {
+    if ($type) {
+      $nodes = node_load_multiple(array(), array('type' => $type));
+
+      foreach ($nodes as $node) {
+        b64_convert_module_check_node_content($node);
+      }
+    }
+  }
+
+  drupal_set_message(t('Settings saved.'));
+
+}
+
+
+function b64_convert_module_check_node_content(&$node) {
+	 global $user;
+  $formats = filter_formats($user);
+  $text_format = array();
+  foreach ($formats as $format) {
+    $text_format[] = $format->format;
+  }
+  foreach ($node as $key => $nod) {
+    if (preg_match('/field_/', $key) || $key == 'body') {
+      foreach ($nod as $lang => $nod_val) {
+        if (isset($nod[$lang][0]['format']) && in_array($nod[$lang][0]['format'], $text_format)) {
+          if (preg_match_all('/src="([^"]*)"/i', $nod[$lang][0]['value'], $matches)) {
+            foreach ($matches[1] as $value) {
+              if (preg_match('/base64/', $value) !== 0) {
+                $data = explode(';base64', $value);
+                $extension = str_replace('data:image/', '', $data[0]);
+                $data = base64_decode($data[1]);
+                $file_name = tempnam(drupal_realpath($file_path . '://') . '/', 'b64_generated_');
+                file_put_contents($file_name . '.' . $extension, $data);
+                $name = $file_name . '.' . $extension;
+                @unlink($file_name);
+                $name = explode('/', $name);
+                $url = file_create_url($file_path . '://' . $name[count($name) - 1]);
+
+                $node_field_val = $node->$key;
+                $cur_value = $node_field_val[$lang][0]['value'];
+                $node_field_val[$lang][0]['value'] = str_replace($value, $url, $cur_value);
+                $node->$key = $node_field_val;
+                node_save($node);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
