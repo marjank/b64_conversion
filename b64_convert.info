@@ -1,5 +1,5 @@
 name = B64 conversion
-description = convert b64 images in files and replaces the url of the image.Sponsored by <a href="http://voxteneo.com">Vox Teneo</a>
+description = convert b64 images in files and replaces the url of the image. Sponsored by <a href="http://voxteneo.com">Vox Teneo</a>
 package = Vox Teneo
 core = 7.x
 version=7.x-1.0
