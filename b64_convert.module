@@ -97,6 +97,7 @@ function b64_convert_module_check_node_content(&$node) {
   foreach ($formats as $format) {
     $text_format[] = $format->format;
   }
+  $file_path = variable_get('b64_convert_directory');
   foreach ($node as $key => $nod) {
     if (preg_match('/field_/', $key) || $key == 'body') {
       foreach ($nod as $lang => $nod_val) {
